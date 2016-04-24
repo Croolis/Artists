@@ -5,6 +5,9 @@ import android.content.Intent;
 import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.DefaultItemAnimator;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
@@ -32,31 +35,19 @@ public class ListActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_list);
 
-        ListView listView = ((ListView) findViewById(R.id.artists));
-        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            public void onItemClick(AdapterView<?> parent, View view,
-                                    int position, long id) {
-                Integer tag = (Integer) view.getTag();
-                Intent intent = new Intent(getBaseContext(), DetailActivity.class);
-                Integer artistId = artists.get(tag).getId();
-                intent.putExtra("id", artistId);
-                startActivity(intent);
-            }
-        });
-
+        RecyclerView recyclerView = (RecyclerView)findViewById(R.id.artists);
         String url = "http://download.cdn.yandex.net/mobilization-2016/artists.json";
-        new GetArtists(listView, getApplicationContext(), false).execute(url);
-
+        new GetArtists(recyclerView, getApplicationContext(), false).execute(url);
     }
 
     private class GetArtists extends AsyncTask<String, Void, ArrayList<Artist>> {
         Context context;
-        ListView listView;
+        RecyclerView recyclerView;
         boolean forceRefresh;
 
-        public GetArtists(ListView aListView, Context aContext, boolean aForceRefresh) {
+        public GetArtists(RecyclerView aRecyclerView, Context aContext, boolean aForceRefresh) {
             context = aContext;
-            listView = aListView;
+            recyclerView = aRecyclerView;
             forceRefresh = aForceRefresh;
         }
 
@@ -127,8 +118,14 @@ public class ListActivity extends AppCompatActivity {
 
         protected void onPostExecute(ArrayList<Artist> result) {
             artists = result;
-            ListView listView = ((ListView) findViewById(R.id.artists));
-            listView.setAdapter(new ArtistsAdapter(context, artists));
+            RecyclerView recyclerView = (RecyclerView)findViewById(R.id.artists);
+            ArtistsAdapter adapter = new ArtistsAdapter(artists, context);
+            LinearLayoutManager layoutManager = new LinearLayoutManager(context);
+            RecyclerView.ItemAnimator itemAnimator = new DefaultItemAnimator();
+
+            recyclerView.setAdapter(adapter);
+            recyclerView.setLayoutManager(layoutManager);
+            recyclerView.setItemAnimator(itemAnimator);
 
         }
     }

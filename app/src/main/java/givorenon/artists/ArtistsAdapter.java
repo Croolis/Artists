@@ -1,63 +1,73 @@
 package givorenon.artists;
 
 import android.content.Context;
+import android.content.Intent;
+import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 
 import java.util.ArrayList;
 
-public class ArtistsAdapter extends BaseAdapter {
-    ArrayList<Artist> artists;
-    LayoutInflater inflater;
+public class ArtistsAdapter extends RecyclerView.Adapter<ArtistsAdapter.ViewHolder> {
+
+    private ArrayList<Artist> artists;
     Context context;
 
-    ArtistsAdapter(Context aContext, ArrayList<Artist> anArtists) {
-        artists = anArtists;
-        context = aContext;
-        inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+    public ArtistsAdapter(ArrayList<Artist> artists, Context context) {
+        this.artists = artists;
+        this.context = context;
     }
 
     @Override
-    public int getCount() {
+    public ViewHolder onCreateViewHolder(ViewGroup viewGroup, int i) {
+        View v = LayoutInflater.from(viewGroup.getContext()).inflate(R.layout.artist, viewGroup, false);
+        return new ViewHolder(v);
+    }
+
+    @Override
+    public void onBindViewHolder(ViewHolder viewHolder, int i) {
+        Artist artist = artists.get(i);
+
+        viewHolder.name.setText(artist.getName());
+        viewHolder.genres.setText(artist.getGenres());
+        Log.d("HEY", artist.getGenres());
+        String text = context.getString(R.string.albums_tracks, artist.getAlbums(), artist.getTracks());
+        viewHolder.tracks.setText(text);
+        String url = artist.getCover().split("\\|")[0];
+        new SetImage(viewHolder.pic, context).execute(url);
+    }
+
+    @Override
+    public int getItemCount() {
         return artists.size();
     }
 
-    @Override
-    public View getView(int aPosition, View aConvertView, ViewGroup aParent) {
-        View resultView = aConvertView;
-        if (resultView == null) {
-            resultView = inflater.inflate(R.layout.artist, null, false);
+    class ViewHolder extends RecyclerView.ViewHolder {
+
+        private ImageView pic;
+        private TextView name;
+        private TextView genres;
+        private TextView tracks;
+
+        public ViewHolder(View itemView) {
+            super(itemView);
+            pic = (ImageView) itemView.findViewById(R.id.pic);
+            name = (TextView) itemView.findViewById(R.id.name);
+            genres = (TextView) itemView.findViewById(R.id.genres);
+            tracks = (TextView) itemView.findViewById(R.id.tracks);
+//            itemView.setOnClickListener(new View.OnClickListener() {
+//                public void onClick(View view) {
+//                    Integer tag = (Integer) view.getTag();
+//                    Intent intent = new Intent(context, DetailActivity.class);
+//                    Integer artistId = artists.get(tag).getId();
+//                    intent.putExtra("id", artistId);
+//                    context.startActivity(intent);
+//                }
+//            });
         }
-
-        Artist artist = artists.get(aPosition);
-        ((TextView) resultView.findViewById(R.id.name)).setText(artist.getName());
-        String genres = artist.getGenres();
-        ((TextView) resultView.findViewById(R.id.genres)).setText(genres);
-        String albums = artist.getAlbums().toString();
-        String tracks = artist.getTracks().toString();
-        ((TextView) resultView.findViewById(R.id.tracks)).setText(albums + " albums, " + tracks + " tracks");
-
-        String url = artist.getCover().split("\\|")[0];
-        ImageView imageView = (ImageView) resultView.findViewById(R.id.pic);
-        new SetImage(imageView, context).execute(url);
-
-        resultView.setTag(aPosition);
-        resultView.setId(aPosition);
-
-        return resultView;
-    }
-
-    @Override
-    public long getItemId(int anId) {
-        return anId;
-    }
-
-    @Override
-    public Artist getItem(int anId) {
-        return artists.get(anId);
     }
 }

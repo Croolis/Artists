@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Artists</string>
+    <string name="albums_tracks">%1$d albums  •  %2$d tracks</string>
 </resources>
