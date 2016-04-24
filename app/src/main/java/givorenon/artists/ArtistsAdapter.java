@@ -3,7 +3,6 @@ package givorenon.artists;
 import android.content.Context;
 import android.content.Intent;
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -34,7 +33,6 @@ public class ArtistsAdapter extends RecyclerView.Adapter<ArtistsAdapter.ViewHold
 
         viewHolder.name.setText(artist.getName());
         viewHolder.genres.setText(artist.getGenres());
-        Log.d("HEY", artist.getGenres());
         String text = context.getString(R.string.albums_tracks, artist.getAlbums(), artist.getTracks());
         viewHolder.tracks.setText(text);
         String url = artist.getCover().split("\\|")[0];
@@ -46,7 +44,7 @@ public class ArtistsAdapter extends RecyclerView.Adapter<ArtistsAdapter.ViewHold
         return artists.size();
     }
 
-    class ViewHolder extends RecyclerView.ViewHolder {
+    class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
 
         private ImageView pic;
         private TextView name;
@@ -59,15 +57,16 @@ public class ArtistsAdapter extends RecyclerView.Adapter<ArtistsAdapter.ViewHold
             name = (TextView) itemView.findViewById(R.id.name);
             genres = (TextView) itemView.findViewById(R.id.genres);
             tracks = (TextView) itemView.findViewById(R.id.tracks);
-//            itemView.setOnClickListener(new View.OnClickListener() {
-//                public void onClick(View view) {
-//                    Integer tag = (Integer) view.getTag();
-//                    Intent intent = new Intent(context, DetailActivity.class);
-//                    Integer artistId = artists.get(tag).getId();
-//                    intent.putExtra("id", artistId);
-//                    context.startActivity(intent);
-//                }
-//            });
+            itemView.setOnClickListener(this);
+        }
+
+        public void onClick(View view) {
+            Integer tag = getPosition();
+            Intent intent = new Intent(context, DetailActivity.class);
+            Integer artistId = artists.get(tag).getId();
+            intent.putExtra("id", artistId);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
         }
     }
 }

@@ -36,8 +36,10 @@ public class ListActivity extends AppCompatActivity {
         setContentView(R.layout.activity_list);
 
         RecyclerView recyclerView = (RecyclerView)findViewById(R.id.artists);
+        ArtistsAdapter adapter = new ArtistsAdapter(artists, getBaseContext());
+        recyclerView.setAdapter(adapter);
         String url = "http://download.cdn.yandex.net/mobilization-2016/artists.json";
-        new GetArtists(recyclerView, getApplicationContext(), false).execute(url);
+        new GetArtists(recyclerView, getBaseContext(), false).execute(url);
     }
 
     private class GetArtists extends AsyncTask<String, Void, ArrayList<Artist>> {
