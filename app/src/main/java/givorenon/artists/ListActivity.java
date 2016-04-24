@@ -22,6 +22,7 @@ import java.util.ArrayList;
 
 import io.realm.Realm;
 import io.realm.RealmConfiguration;
+import io.realm.RealmResults;
 
 public class ListActivity extends AppCompatActivity {
 
@@ -31,92 +32,121 @@ public class ListActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_list);
 
-        //artists = getArtists();
-        //
+        ListView listView = ((ListView) findViewById(R.id.artists));
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            public void onItemClick(AdapterView<?> parent, View view,
+                                    int position, long id) {
+                Integer tag = (Integer) view.getTag();
+                Intent intent = new Intent(getBaseContext(), DetailActivity.class);
+                Integer artistId = artists.get(tag).getId();
+                intent.putExtra("id", artistId);
+                startActivity(intent);
+            }
+        });
 
-        new GetArtistsTask().execute();
+        String url = "http://download.cdn.yandex.net/mobilization-2016/artists.json";
+        new GetArtists(listView, getApplicationContext(), false).execute(url);
 
     }
 
-    private class GetArtistsTask extends AsyncTask<Context, Void, ArrayList<Artist>> {
-        protected ArrayList<Artist> doInBackground(Context... contexts) {
-            return getArtists();
+    private class GetArtists extends AsyncTask<String, Void, ArrayList<Artist>> {
+        Context context;
+        ListView listView;
+        boolean forceRefresh;
+
+        public GetArtists(ListView aListView, Context aContext, boolean aForceRefresh) {
+            context = aContext;
+            listView = aListView;
+            forceRefresh = aForceRefresh;
+        }
+
+        protected ArrayList<Artist> doInBackground(String... urls) {
+            RealmConfiguration realmConfig = new RealmConfiguration.Builder(context).build();
+            Realm realm = Realm.getInstance(realmConfig);
+            RealmResults<Artist> realmArtists = realm.allObjects(Artist.class);
+            ArrayList<Artist> artists = new ArrayList<>();
+
+            // if we have objects in database and it's not said that we need to refresh it
+            // then get artists from db
+            if ((realmArtists.size() != 0) && (!forceRefresh)) {
+
+                for (int i = 0; i < realmArtists.size(); i++) {
+                    Artist artist = new Artist(realmArtists.get(i));
+                    artists.add(artist);
+                }
+                return artists;
+            }
+
+            StringBuffer response = new StringBuffer();
+            try {
+                URL obj = new URL(urls[0]);
+                HttpURLConnection con = (HttpURLConnection) obj.openConnection();
+
+                con.setRequestMethod("GET");
+                con.setRequestProperty("User-Agent", "Mozilla/5.0");
+
+                int responseCode = con.getResponseCode();
+                if (responseCode >= 400)
+                    throw new Exception("Failed to send request");
+                BufferedReader in = new BufferedReader(
+                        new InputStreamReader(con.getInputStream()));
+                String inputLine;
+
+                while ((inputLine = in.readLine()) != null) {
+                    response.append(inputLine);
+                }
+                in.close();
+            } catch (Exception e) {
+                Log.e("DATA", e.toString());
+                Log.e("DATA", "Failed to send GET request");
+                return artists;
+            }
+
+            try {
+                realm.beginTransaction();
+                JSONArray jArray = new JSONArray(response.toString());
+                for (int i = 0; i < jArray.length(); i++) {
+                    JSONObject jObject = jArray.getJSONObject(i);
+                    Artist artist = jsonToArtist(jObject);
+                    if (artist == null)
+                        continue;
+                    artists.add(artist);
+                    if (realm.where(Artist.class)
+                            .equalTo("id", artist.getId())
+                            .findFirst() != null)
+                        continue;
+                    realm.copyToRealm(artist);
+                }
+                realm.commitTransaction();
+            } catch (Exception e) {
+                Log.e("DATA", e.toString());
+                Log.e("DATA", "Failed to decode message");
+            }
+            return artists;
         }
 
         protected void onPostExecute(ArrayList<Artist> result) {
             artists = result;
             ListView listView = ((ListView) findViewById(R.id.artists));
-            listView.setAdapter(new ArtistsAdapter(getBaseContext(), artists));
-            listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-                public void onItemClick(AdapterView<?> parent, View view,
-                                        int position, long id) {
-                    toDetail((Integer) view.getTag());
-                }
-            });
+            listView.setAdapter(new ArtistsAdapter(context, artists));
+
         }
     }
 
-    private ArrayList<Artist> getArtists() {
-        ArrayList<Artist> artists = new ArrayList<>();
-        RealmConfiguration realmConfig = new RealmConfiguration.Builder(this.getApplicationContext()).build();
-        Realm realm = Realm.getInstance(realmConfig);
-        StringBuffer response = new StringBuffer();
-        try {
-            String url = "http://download.cdn.yandex.net/mobilization-2016/artists.json";
-            URL obj = new URL(url);
-            HttpURLConnection con = (HttpURLConnection) obj.openConnection();
-
-            con.setRequestMethod("GET");
-            con.setRequestProperty("User-Agent", "Mozilla/5.0");
-
-            int responseCode = con.getResponseCode();
-            if (responseCode >= 400)
-                throw new Exception("Failed to send request");
-            BufferedReader in = new BufferedReader(
-                    new InputStreamReader(con.getInputStream()));
-            String inputLine;
-
-
-            while ((inputLine = in.readLine()) != null) {
-                response.append(inputLine);
-            }
-            in.close();
-        } catch (Exception e) {
-            Log.e("DATA", e.toString());
-            Log.e("DATA", "Failed to send GET request");
-            return artists;
-        }
-
-        try {
-            realm.beginTransaction();
-            JSONArray jArray = new JSONArray(response.toString());
-            for (int i = 0; i < jArray.length(); i++) {
-                JSONObject jObject = jArray.getJSONObject(i);
-                Artist artist = jsonToArtist(jObject);
-                artists.add(artist);
-                if (realm.where(Artist.class)
-                        .equalTo("id", artist.getId())
-                        .findFirst() != null)
-                    continue;
-                realm.copyToRealm(artist);
-            }
-            realm.commitTransaction();
-        } catch (Exception e) {
-            Log.e("DATA", e.toString());
-            Log.e("DATA", "Failed to decode message");
-        }
-        return artists;
-    }
-
+    // some fields are optional so we don't do anything if they are empty
     private Artist jsonToArtist(JSONObject jObject) {
-        Integer id = 0;
+        Integer id;
         try {
             id = jObject.getInt("id");
-        } catch (Exception e) {}
-        String name = "";
+        } catch (Exception e) {
+            return null;
+        }
+        String name;
         try {
             name = jObject.getString("name");
-        } catch (Exception e) {}
+        } catch (Exception e) {
+            return null;
+        }
         String genres = "";
         ArrayList<String> genresArray = new ArrayList<>();
         try {
@@ -143,20 +173,15 @@ public class ListActivity extends AppCompatActivity {
             description = jObject.getString("description");
         } catch (Exception e) {}
         ArrayList<String> coverArray = new ArrayList<>();
-        String cover = "";
+        String cover;
         try {
             JSONObject jObjectCover = jObject.getJSONObject("cover");
             coverArray.add(jObjectCover.getString("small"));
             coverArray.add(jObjectCover.getString("big"));
             cover = TextUtils.join("|", coverArray);
-        } catch (Exception e) {}
+        } catch (Exception e) {
+            return null;
+        }
         return new Artist(id, name, genres, tracks, albums, link, description, cover);
-    }
-
-    private void toDetail(Integer tag) {
-        Intent intent = new Intent(this, DetailActivity.class);
-        Integer artistId = artists.get(tag).getId();
-        intent.putExtra("id", artistId);
-        startActivity(intent);
     }
 }

@@ -31,6 +31,17 @@ public class Artist extends RealmObject {
         this.cover = cover;
     }
 
+    public Artist(Artist anotherArtist) {
+        this.id = anotherArtist.getId();
+        this.name = anotherArtist.getName();
+        this.genres = anotherArtist.getGenres();
+        this.tracks = anotherArtist.getTracks();
+        this.albums = anotherArtist.getAlbums();
+        this.link = anotherArtist.getLink();
+        this.description = anotherArtist.getDescription();
+        this.cover = anotherArtist.getCover();
+    }
+
     public Integer getId() {
         return id;
     }
